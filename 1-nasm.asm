@@ -93,19 +93,37 @@ Specif:
 
             cmp  BYTE [rsi], 'b'
             jne  .testHex
-            mov  rcx, 0
+            mov  rdx, 1
+            mov  r10, 0x1
+            mov rax, [rbx]
+            push rdi
+            push r8
+            call num_To_Hex_String
+            pop  r8
+            pop  rdi
             jmp .number
 
             .testHex:
             cmp  BYTE [rsi], 'x'
             jne  .testDec
-            mov  rcx, 1
+            mov  rdx, 4
+            mov  r10, 0xf
+            mov rax, [rbx]
+            push rdi 
+            push r8 
+            call num_To_Hex_String
+            pop r8
+            pop rdi
             jmp .number
 
             .testDec:
             cmp  BYTE [rsi], 'd'
             jne  .notNum
-            mov  rcx, 2
+            mov rax, [rbx]
+            push r8 
+            call num_To_dec_String
+            pop r8
+
             jmp .number
 
             .notNum:
@@ -128,7 +146,7 @@ Specif:
             mov  r15, 1            
             call is_Enoth_space     ;is space enoth buffer
             mov  BYTE [rdi], '%'           ;% to print buffer
-            inc  rdi
+            add  rdi,8
 
             jmp .endOfspec
 
@@ -138,7 +156,7 @@ Specif:
             call is_Enoth_space     ;is space enoth buffer
             mov  r15, [rbx]         ;next arg to print buffer
             mov  [rdi], r15b         
-            inc rdi
+            add rdi, 8
             add rbx, 8              ;next_arg_ptr to next asrg 
 
             jmp .endOfspec
@@ -149,11 +167,7 @@ Specif:
             push r15
             push r12
             push r8 
-            push r9
-            push rcx
             call save_Num_to_buffer
-            pop  rcx
-            pop  r9
             pop  r8
             pop  r12
             pop  r15
@@ -212,56 +226,10 @@ clean_buffer:
             ret
 
 ;rsi - source sting, rbx - pointer to next print arg, rdi- pointer to next arg 
-;rcx - OutputType: 0 - bin, 1 - hex, 2 - dec
+;r15 - size
 ;destr - rax, rdx, r15, r12, rdi,  r8, r9, r10, rcx, rbp
 save_Num_to_buffer:
-            mov rax, [rbx]          ;first bit is 1 -> sub zero
-            shr rax, 63
-            cmp rax, 0           
-            je  .aboveZero 
-            cmp rcx, 2
-            jne .aboveZero
-
-            mov  r15, 1            
-            call is_Enoth_space     ;is space enoth buffer
-            mov  BYTE [rdi], '-'           ;% to print buffer
-            inc  rdi
-
-            mov rax, [rbx]
-            dec rax
-            neg rax
-            jmp .makeStringNum
-            .aboveZero:
-
-            mov rax, [rbx]
-            push rdi
-
-            .makeStringNum:
-            cmp  rcx, 1
-            jne   .notHex
-            mov  rdx, 4
-            mov  r10, 0xf 
-            call num_To_Hex_String
-            jmp  .printNum
-            .notHex:
-
-            cmp  rcx, 0
-            jne   .notBin
-            mov  rdx, 1
-            mov  r10, 0x1 
-            call num_To_Hex_String
-            jmp  .printNum
-            .notBin:
-
-            cmp  rcx, 2
-            jne   .notDec
-            call num_To_dec_String
-            jmp  .printNum
-            .notDec:
-            
-
             .printNum:
-            pop rdi
             push r15
             call is_Enoth_space
             pop r15
@@ -278,7 +246,7 @@ save_Num_to_buffer:
 
 
 
-;destr - r8, r9, r10, rcx, rbp, rdi,  r15
+;destr - r8, r9, r10, rcx, rdi,  r15
 ;IN:  rax - input number; rdx - ln(2); r10 - mask
 ;OUT: <numberBuffer> - string, r15 - lenof
 num_To_Hex_String:
@@ -352,12 +320,30 @@ num_To_Hex_String:
 ;IN:  rax - input number;
 ;OUT: <numberBuffer> - string, rax - lenof
 num_To_dec_String:
+            push rbx
+            mov rbx, rax
+            shr rax, 31
+            cmp rax, 0           
+            je  .aboveZero 
+
+            mov  r15, 1            
+            call is_Enoth_space     ;is space enoth buffer
+            mov  BYTE [rdi], '-'           ;% to print buffer
+            add  rdi, 8
+
+            neg ebx
+            .aboveZero:
+            mov rax, rbx
+            pop rbx
+
+            push rdi
+
             push rdx
             mov rdx, 0
             mov r8, 1
             lea rdi, [rel numberBuffer] 
             mov r9, rax
-            XOR r15, r15 
+            xor r15, r15 
             
             .repeat:
             inc r15
@@ -408,6 +394,7 @@ num_To_dec_String:
             jne .afterTest
 
             pop rdx
+            pop rdi
 
             ret
 
