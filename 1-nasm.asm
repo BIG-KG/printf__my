@@ -114,9 +114,7 @@ Specif:
             push rax
             push r8
             push r12
-            push r10
             call save_print_string
-            pop  r10
             pop  r12
             pop  r8
             pop  rax
@@ -152,13 +150,9 @@ Specif:
             push r12
             push r8 
             push r9
-            push r10
             push rcx
-            push rbp
             call save_Num_to_buffer
-            pop  rbp
             pop  rcx
-            pop  r10
             pop  r9
             pop  r8
             pop  r12
@@ -245,13 +239,17 @@ save_Num_to_buffer:
             .makeStringNum:
             cmp  rcx, 1
             jne   .notHex
+            mov  rdx, 4
+            mov  r10, 0xf 
             call num_To_Hex_String
             jmp  .printNum
             .notHex:
 
             cmp  rcx, 0
             jne   .notBin
-            call num_To_bin_String
+            mov  rdx, 1
+            mov  r10, 0x1 
+            call num_To_Hex_String
             jmp  .printNum
             .notBin:
 
@@ -281,17 +279,19 @@ save_Num_to_buffer:
 
 
 ;destr - r8, r9, r10, rcx, rbp, rdi,  r15
-;IN:  rax - input number;
+;IN:  rax - input number; rdx - ln(2); r10 - mask
 ;OUT: <numberBuffer> - string, r15 - lenof
 num_To_Hex_String:
             lea  rdi, [rel numberBuffer]
             xor  rcx, rcx
             xor  r8,  r8
             mov  r9,  rax
-            jmp  .test
+            mov  r8, 64
+            sub  r8, rdx
+            jmp  .test 
 
             .repeat:
-            add  r8, 4
+            sub  r8, rdx
             mov  r9, rax
 
             .test:
@@ -299,20 +299,23 @@ num_To_Hex_String:
             mov  rcx, r8 
             shr  r9, cl
             pop  rcx
-            and  r9, 0xf
+            and  r9, r10
             jz   .noNum
-            mov  rcx, r8
+            jmp .findFirst
             .noNum:
-
-            cmp  r8, 60 
+        
+            cmp  r8, 0
             jne  .repeat
+
+            .findFirst:
+            mov  rcx, r8
             push rcx
 
 
             .make:
             mov  r9, rax
             shr  r9, cl
-            and  r9, 0xf
+            and  r9, r10
 
             cmp  r9b, 10
             jae  .More10 
@@ -332,61 +335,14 @@ num_To_Hex_String:
             cmp  rcx, 0
             je   .end
 
-            sub  rcx, 4
+            sub  rcx, rdx
             jmp  .make
 
             .end:
-            pop r15
-            shr r15, 2
-            inc r15
-
-
-            ret 
-
-num_To_bin_String:
-            lea  rdi, [rel numberBuffer]
-            xor  rcx, rcx
-            xor  r8,  r8
-            mov  r9,  rax
-            jmp  .test
-
-            .repeat:
-            add  r8, 1
-            mov  r9, rax
-
-            .test:
-            push rcx
-            mov  rcx, r8 
-            shr  r9, cl
-            pop  rcx
-            and  r9, 0x1
-            jz   .noNum
-            mov  rcx, r8
-            .noNum:
-
-            cmp  r8, 63 
-            jne  .repeat
-
-            push rcx
-
-
-            .make:
-            mov  r9, rax
-            shr  r9, cl
-            and  r9, 0x1
-
-            add  r9b,  '0'
-            mov  [rdi], r9b
-            inc  rdi
-
-            cmp  rcx, 0
-            je   .end
-
-            sub  rcx, 1
-            jmp  .make
-
-            .end:
-            pop r15
+            pop rax
+            div dl
+            xor r15, r15
+            mov r15b, al
             inc r15
 
 
@@ -448,10 +404,8 @@ num_To_dec_String:
             add rcx , rax
             imul rcx,  10 
 
-
             cmp  r8, 1
             jne .afterTest
-
 
             pop rdx
 

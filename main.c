@@ -7,5 +7,5 @@ extern void printf__my(char *const string, ...);
 
 int main() 
 {
-    printf__my("%b\n", 10);
+    printf__my("%b %d %x\n", 256);
 }
