@@ -1,9 +1,3 @@
-;:================================================
-;: 0-Linux-nasm-64.s                   (c)Ded,2012
-;:================================================
-
-; nasm -f elf64 -l 1-nasm.lst 1-nasm.s  ;  ld -s -o 1-nasm 1-nasm.o
-
 section .text
 
 global printf__my
@@ -60,7 +54,7 @@ scan_no_spec:
             nospec:
 
 
-            cmp  rdi,   outputBuffer + 256  ;if end of outputbuffer -> clean buffer
+            cmp  rdi,   outputBuffer + bufferLen  ;if end of outputbuffer -> clean buffer
             jbe  skip_buffer_clean
             push rax
             push rsi
@@ -189,9 +183,9 @@ Specif:
 ;set rdi to srart to outputbuffer
 is_Enoth_space:
             push rdi
-            add  rdi, rax
+            add  rdi, r15
             lea  r12, [rel outputBuffer]
-            add  r12, 255 
+            add  r12, bufferLen 
 
             cmp  rdi, r12
             jb   enoth_space
@@ -213,13 +207,13 @@ is_Enoth_space:
 ;destr - rdx, rax, rsi, rdi, r12
 ;set rdi to stert of buffer
 clean_buffer:
-            mov  rdx, rdi
+            mov  rdx, rdi                ;size = lestEl(rdi) - outputBuffer
+            mov  rax, [rel outputBuffer]  
+            sub  rdx, rax
 
-
-            mov  rax, 0x01      
-            mov  rdi, 1 
-            lea  r12, [rel outputBuffer] 
-            mov  rsi, r12     
+            mov  rax, 0x01               ; typeOf syscall
+            mov  rdi, 1                  ; stdout       -> output    
+            lea  rsi, [rel outputBuffer] ; outputBuffer -> sourse 
             syscall
 
             lea  rdi, [rel outputBuffer]  
@@ -227,7 +221,7 @@ clean_buffer:
 
 ;rsi - source sting, rbx - pointer to next print arg, rdi- pointer to next arg 
 ;r15 - size
-;destr - rax, rdx, r15, r12, rdi,  r8, r9, r10, rcx, rbp
+;destr - rax, rdx, r15, rdi,  r8, r9, r10, rcx
 save_Num_to_buffer:
             .printNum:
             push r15
@@ -252,9 +246,8 @@ save_Num_to_buffer:
 num_To_Hex_String:
             lea  rdi, [rel numberBuffer]
             xor  rcx, rcx
-            xor  r8,  r8
             mov  r9,  rax
-            mov  r8, 64
+            mov  r8, 64     ; wide of register
             sub  r8, rdx
             jmp  .test 
 
@@ -316,10 +309,11 @@ num_To_Hex_String:
 
             ret 
 
-;destr - r8, r9, r10, rcx, rbp, rdx, r15
+;destr - r8, r9, r10, rcx, r15, r11
 ;IN:  rax - input number;
 ;OUT: <numberBuffer> - string, rax - lenof
 num_To_dec_String:
+            push rdx
             push rbx
             mov rbx, rax
             shr rax, 31
@@ -339,7 +333,7 @@ num_To_dec_String:
             push rdi
 
             push rdx
-            mov rdx, 0
+            xor rdx, rdx
             mov r8, 1
             lea rdi, [rel numberBuffer] 
             mov r9, rax
@@ -395,6 +389,7 @@ num_To_dec_String:
 
             pop rdx
             pop rdi
+            pop rdx
 
             ret
 
@@ -412,7 +407,7 @@ save_print_string:
         pop  rsi
         pop  rdi
 
-        cmp  rax, 256
+        cmp  rax, bufferLen
         jb   .fits_in_buffer
         push rax
         push rsi
